@@ -22,7 +22,7 @@ src/buildVersion.c: ${sources} ${dependencies}
 
 ${bin}/mafExtractor: src/mafExtractor.c ${dependencies} ${API}
 	mkdir -p $(dir $@)
-	${cxx} ${cflags} -O3 $< ${API} -o $@.tmp
+	${cxx} ${cflags} -O3 $< ${API} -o $@.tmp ${lm}
 	mv $@.tmp $@
 
 test/mafExtractor: src/mafExtractor.c ${dependencies} ${testAPI}
