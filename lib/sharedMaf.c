@@ -847,7 +847,6 @@ mafBlock_t* maf_readBlockHeader(mafFileApi_t *mfa) {
     ++(mfa->lineNumber);
     header->lineNumber = mfa->lineNumber;
     ++(header->numberOfLines);
-    maf_checkForPrematureMafEnd(maf_mafFileApi_getFilename(mfa), status, line);
   }
   if (!validHeader) {
     fprintf(stderr, "Error, maf file %s does not contain a valid header!\n", mfa->filename);
