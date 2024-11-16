@@ -86,7 +86,7 @@ static void parseOrderList(char *filename, char *orderlist) {
             if (orderlist[0] != '\0') {
                 strcat(orderlist, ",");
             }
-            strncat(orderlist, line_buffer, bytes_read -1);
+            strncat(orderlist, line_buffer, bytes_read);
         }
     }
     free(line_buffer);
