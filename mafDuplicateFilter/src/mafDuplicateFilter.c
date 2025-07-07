@@ -588,8 +588,24 @@ void checkBlock(mafBlock_t *block) {
     // this block contains duplicates
     char *consensus = (char *) de_malloc(longestLine(block) + 1);
     consensus[0] = '\0';
-    buildConsensus(consensus, sequences, n,
-                   maf_mafLine_getLineNumber(maf_mafBlock_getHeadLine(block))); // lineno used for error reporting
+    if (keepFirst) {
+        // we are going to measure similarity to the first reference, since that's what
+        // we're filtering on
+        mafLine_t *first_line =  maf_mafBlock_getHeadLine(block);
+        if (maf_mafLine_getType(first_line) == 'a') {
+            first_line = maf_mafLine_getNext(first_line);
+        }
+        strcpy(consensus, maf_mafLine_getSequence(first_line));
+        int64_t cons_len = strlen(consensus);
+        for (int64_t i = 0; i < cons_len; ++i) {
+            if (consensus[i] == '-') {
+                consensus[i] = 'N';
+            }
+        }
+    } else {
+        buildConsensus(consensus, sequences, n,
+                       maf_mafLine_getLineNumber(maf_mafBlock_getHeadLine(block))); // lineno used for error reporting
+    }
     findBestDupes(block, dupSpeciesHead, consensus);
     reportBlockWithDuplicates(block, dupSpeciesHead);
     // clean up
