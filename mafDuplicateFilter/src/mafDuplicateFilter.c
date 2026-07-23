@@ -35,6 +35,7 @@
 
 const char *g_version = "version 0.1 September 2012";
 static bool keepFirst = false;
+static bool refOnly = false;
 
 typedef struct scoredMafLine {
     // augmented data structure
@@ -69,6 +70,7 @@ void reportBlock(mafBlock_t *b);
 void reportBlockWithDuplicates(mafBlock_t *mb, duplicate_t *dupHead);
 void reportDuplicates(duplicate_t *dup);
 duplicate_t* findDuplicate(duplicate_t *dup, char *species);
+char* getReferenceSpecies(mafBlock_t *mb);
 double bitScore(char a, char b);
 double scoreSequence(char *consensus, char *seq);
 void populateMafLineArray(scoredMafLine_t *head, scoredMafLine_t **array);
@@ -92,10 +94,11 @@ void parseOptions(int argc, char **argv, char *filename) {
             {"version", no_argument, 0, 0},
             {"maf",  required_argument, 0, 'm'},
             {"keep-first", no_argument, 0, 'k'},
+            {"ref-only", no_argument, 0, 'r'},
             {0, 0, 0, 0}
         };
         int longIndex = 0;
-        c = getopt_long(argc, argv, "d:m:kh:v",
+        c = getopt_long(argc, argv, "d:m:krh:v",
                         longOptions, &longIndex);
         if (c == -1)
             break;
@@ -112,6 +115,9 @@ void parseOptions(int argc, char **argv, char *filename) {
             break;
         case 'k':
             keepFirst = true;
+            break;
+        case 'r':
+            refOnly = true;
             break;
         case 'v':
             g_verbose_flag++;
@@ -166,6 +172,9 @@ void usage(void) {
     usageMessage('m', "maf", "path to maf file. use - for stdin.");
     usageMessage('v', "verbose", "turns on verbose output.");
     usageMessage('k', "keep-first", "never filter the first line of a block.");
+    usageMessage('r', "ref-only", "only filter duplicates of the reference (first sequence) "
+                 "species in each block; leave all other species untouched. Typically combined "
+                 "with --keep-first so the retained reference copy is the first line.");
     exit(EXIT_FAILURE);
 }
 scoredMafLine_t* newScoredMafLine(void) {
@@ -348,13 +357,15 @@ void reportBlockWithDuplicates(mafBlock_t *mb, duplicate_t *dupHead) {
     // is a member of the duplicate linked list, report only the top scoring duplicate
     // which will be the one stored at the head of the mafline linkeded list (dup->headScoredMaf).
     mafLine_t *m = maf_mafBlock_getHeadLine(mb);
+    char *refSpecies = refOnly ? getReferenceSpecies(mb) : NULL;
     duplicate_t *d = dupHead;
     while (m != NULL) {
         d = dupHead;
         bool isDup = false;
         while (d != NULL && maf_mafLine_getSpecies(m) != NULL && d->species != NULL) {
             if (!strcmp(maf_mafLine_getSpecies(m), d->species)) {
-                if (d->numSequences > 1) {
+                if (d->numSequences > 1 &&
+                    (!refOnly || (refSpecies != NULL && !strcmp(d->species, refSpecies)))) {
                     isDup = true;
                     if (!strcmp(maf_mafLine_getLine(m), maf_mafLine_getLine(d->headScoredMaf->mafLine))
                         && !d->reported) {
@@ -402,6 +413,15 @@ duplicate_t* findDuplicate(duplicate_t *dup, char *species) {
         dup = dup->next;
     }
     return NULL;
+}
+char* getReferenceSpecies(mafBlock_t *mb) {
+    // return the species of the first sequence ('s') line in the block, which is
+    // treated as the reference. returns NULL if the block has no sequence lines.
+    mafLine_t *m = maf_mafBlock_getHeadLine(mb);
+    while (m != NULL && maf_mafLine_getType(m) != 's') {
+        m = maf_mafLine_getNext(m);
+    }
+    return (m != NULL) ? maf_mafLine_getSpecies(m) : NULL;
 }
 double bitScore(char a, char b) {
     // a is the truth, b is the prediction
@@ -466,10 +486,16 @@ void findBestDupes(mafBlock_t *block, duplicate_t *head, char *consensus) {
     if (maf_mafLine_getType(first_line) == 'a') {
         first_line = maf_mafLine_getNext(first_line);
     }
+    char *refSpecies = refOnly ? getReferenceSpecies(block) : NULL;
     scoredMafLine_t *sml = NULL;
     while (d != NULL) {
         if (d->numSequences < 2) {
             // if there's only one sequence, who cares
+            d = d->next;
+            continue;
+        }
+        if (refOnly && (refSpecies == NULL || strcmp(d->species, refSpecies) != 0)) {
+            // in ref-only mode we only collapse duplicates of the reference species
             d = d->next;
             continue;
         }

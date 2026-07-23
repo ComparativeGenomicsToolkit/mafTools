@@ -19,6 +19,8 @@ mafDuplicateFilter is a program to filter out duplications from a Multiple Align
 ### Options
 * <code>-h, --help</code>   show this help message and exit.
 * <code>-m, --maf</code>    path to maf file.
+* <code>-k, --keep-first</code>   never filter the first line of a block.
+* <code>-r, --ref-only</code>   only filter duplicates of the reference (first sequence) species in each block; leave all other species untouched. Typically combined with <code>--keep-first</code> so the retained reference copy is the first line.
 
 ## Example
     $ ./mafDuplicateFilter --maf mafWithDuplicates.maf > mafPruned.maf
