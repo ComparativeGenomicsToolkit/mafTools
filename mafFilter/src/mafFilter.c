@@ -42,7 +42,7 @@ const char *g_version = "version 0.1 September 2012";
 
 void version(void);
 void usage(void);
-void parseOptions(int argc, char **argv, char *filename, char *nameList,
+void parseOptions(int argc, char **argv, char *filename, char **nameList,
                   bool *isInclude, int64_t *blockDegLT, int64_t *blockDegGT,
                   double *maxRefNFrac);
 void checkRegion(unsigned lineno, char *fullname, uint64_t pos, uint64_t start,
@@ -86,7 +86,7 @@ void usage(void) {
     usageMessage('v', "verbose", "turns on verbose output.");
     exit(EXIT_FAILURE);
 }
-void parseOptions(int argc, char **argv, char *filename, char *nameList, bool *isInclude, int64_t *blockDegGt, int64_t *blockDegLt, double *maxRefNFrac) {
+void parseOptions(int argc, char **argv, char *filename, char **nameList, bool *isInclude, int64_t *blockDegGt, int64_t *blockDegLt, double *maxRefNFrac) {
     extern int g_debug_flag;
     extern int g_verbose_flag;
     int c;
@@ -120,17 +120,25 @@ void parseOptions(int argc, char **argv, char *filename, char *nameList, bool *i
             break;
         case 'm':
             setMafName = true;
-            sscanf(optarg, "%s", filename);
+            // bounded copy: an over-long path used to overrun filename
+            if (snprintf(filename, kMaxStringLength, "%s", optarg) >= kMaxStringLength) {
+                fprintf(stderr, "--maf path is longer than the %d character maximum\n", kMaxStringLength - 1);
+                exit(EXIT_FAILURE);
+            }
             break;
         case 'i':
             setNames = true;
             *isInclude = true;
-            sscanf(optarg, "%s", nameList);
+            // the name list is duplicated onto the heap rather than read into a fixed buffer, as
+            // a list naming every sequence of a large alignment runs to many kilobytes
+            free(*nameList);
+            *nameList = de_strdup(optarg);
             break;
         case 'e':
             setNames = true;
             *isInclude = false;
-            sscanf(optarg, "%s", nameList);
+            free(*nameList);
+            *nameList = de_strdup(optarg);
             break;
         case 'g':
             setNames = true;
@@ -296,7 +304,7 @@ void filterInput(mafFileApi_t *mfa, char **names, unsigned n,
 }
 unsigned countNames(char *s) {
     unsigned i, n;
-    if (strlen(s) == 0) {
+    if (s == NULL || strlen(s) == 0) {
         return 0;
     }
     n = 1;
@@ -339,13 +347,12 @@ void reportNames(char **names, unsigned n) {
 int main(int argc, char **argv) {
     (void) (reportNames);
     char filename[kMaxStringLength];
-    char nameList[kMaxStringLength];
-    nameList[0] = '\0';
+    char *nameList = NULL; // heap allocated by parseOptions so the list length is unbounded
     int64_t excludeBlockDegreeGT = -1;
     int64_t excludeBlockDegreeLT = -1;
     bool isInclude = true; // if 0 then we are in exclude mode. 1 is include mode.
     double maxRefNFrac = -1.;
-    parseOptions(argc, argv,  filename, nameList, &isInclude, &excludeBlockDegreeGT, &excludeBlockDegreeLT, &maxRefNFrac);
+    parseOptions(argc, argv,  filename, &nameList, &isInclude, &excludeBlockDegreeGT, &excludeBlockDegreeLT, &maxRefNFrac);
     unsigned n = countNames(nameList);
     char **names = extractNames(nameList, n);
     mafFileApi_t *mfa = maf_newMfa(filename, "r");
@@ -354,6 +361,7 @@ int main(int argc, char **argv) {
 
     maf_destroyMfa(mfa);
     destroyNameList(names, n);
+    free(nameList);
 
     return EXIT_SUCCESS;
 }
