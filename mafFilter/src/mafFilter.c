@@ -56,6 +56,7 @@ void filterInput(mafFileApi_t *mfa, char **names, unsigned n,
                  bool isInclude, int64_t excludeBlockDegreeGT,
                  int64_t excludeBlockDegreeLT, double maxRefNFrac);
 unsigned countNames(char *s);
+char* readNameListFile(const char *filename);
 char** extractNames(char *nameList, unsigned n);
 void destroyNameList(char **names, unsigned n);
 void reportNames(char **names, unsigned n);
@@ -74,12 +75,18 @@ void usage(void) {
             "command line. For example one can filter out all\n"
             "sequence lines that start with 'hg18' using --excludeSeq\n"
             "or filter for sequence lines starting with only 'hg19',\n"
-            "'mm9' and 'rn4' using --includeSeq.\n\n");
+            "'mm9' and 'rn4' using --includeSeq.\n\n"
+            "For long lists, --includeSeqFile and --excludeSeqFile read the\n"
+            "same names from a file, one per line, which avoids having to\n"
+            "build a comma separated list on the command line. Blank lines\n"
+            "and lines beginning with '#' are ignored.\n\n");
     fprintf(stderr, "Options: \n");
     usageMessage('h', "help", "show this help message and exit.");
     usageMessage('m', "maf", "path to maf file. use - for stdin.");
     usageMessage('i', "includeSeq", "comma separated list of sequence names to include.");
     usageMessage('e', "excludeSeq", "comma separated list of sequence names to exclude.");
+    usageMessage('I', "includeSeqFile", "file of sequence names to include, one per line.");
+    usageMessage('E', "excludeSeqFile", "file of sequence names to exclude, one per line.");
     usageMessage('g', "noDegreeGT", "filter out all blocks with degree greater than this value.");
     usageMessage('l', "noDegreeLT", "filter out all blocks with degree less than this value.");
     usageMessage('N', "maxRefNFrac", "filter out all blocks whose reference sequence is more than this fraction of Ns");    
@@ -100,13 +107,15 @@ void parseOptions(int argc, char **argv, char *filename, char **nameList, bool *
             {"maf",  required_argument, 0, 'm'},
             {"includeSeq",  required_argument, 0, 'i'},
             {"excludeSeq",  required_argument, 0, 'e'},
+            {"includeSeqFile",  required_argument, 0, 'I'},
+            {"excludeSeqFile",  required_argument, 0, 'E'},
             {"noDegreeGT", required_argument, 0, 'g'},
             {"noDegreeLT", required_argument, 0, 'l'},
             {"maxRefNFrac", required_argument, 0, 'N'},
             {0, 0, 0, 0}
         };
         int longIndex = 0;
-        c = getopt_long(argc, argv, "m:i:e:g:l:v:N:h",
+        c = getopt_long(argc, argv, "m:i:e:I:E:g:l:v:N:h",
                         longOptions, &longIndex);
         if (c == -1) {
             break;
@@ -139,6 +148,18 @@ void parseOptions(int argc, char **argv, char *filename, char **nameList, bool *
             *isInclude = false;
             free(*nameList);
             *nameList = de_strdup(optarg);
+            break;
+        case 'I':
+            setNames = true;
+            *isInclude = true;
+            free(*nameList);
+            *nameList = readNameListFile(optarg);
+            break;
+        case 'E':
+            setNames = true;
+            *isInclude = false;
+            free(*nameList);
+            *nameList = readNameListFile(optarg);
             break;
         case 'g':
             setNames = true;
@@ -301,6 +322,60 @@ void filterInput(mafFileApi_t *mfa, char **names, unsigned n,
         checkBlock(thisBlock, names, n, isInclude, excludeBlockDegreeGT, excludeBlockDegreeLT, maxRefNFrac);
         maf_destroyMafBlockList(thisBlock);
     }
+}
+char* readNameListFile(const char *filename) {
+    // Read sequence names one per line and return them as the comma separated string that
+    // --includeSeq / --excludeSeq would have been given, so the rest of the program is unchanged.
+    // Blank lines and lines starting with '#' are skipped, which lets a list carry a header or
+    // be commented, and leading/trailing whitespace is trimmed.
+    FILE *fh = de_fopen(filename, "r");
+    int64_t lineLen = kMaxStringLength;
+    char *line = (char*) de_malloc(lineLen);
+    size_t capacity = kMaxStringLength, used = 0;
+    char *list = (char*) de_malloc(capacity);
+    list[0] = '\0';
+    int64_t status = 0;
+    while (status != -1) {
+        status = de_getline(&line, &lineLen, fh);
+        // de_getline signals end of file with -1 but still returns a final line that had no
+        // trailing newline, so the buffer is always processed before the loop exits
+        char *name = line;
+        while (*name == ' ' || *name == '\t') {
+            ++name;
+        }
+        char *end = name + strlen(name);
+        while (end > name && (end[-1] == ' ' || end[-1] == '\t')) {
+            --end;
+        }
+        *end = '\0';
+        if (*name == '\0' || *name == '#') {
+            continue;
+        }
+        size_t needed = used + strlen(name) + 2; // the name, a separating comma and the terminator
+        if (needed > capacity) {
+            while (needed > capacity) {
+                capacity *= 2;
+            }
+            char *bigger = (char*) realloc(list, capacity);
+            if (bigger == NULL) {
+                fprintf(stderr, "(de_) realloc failed on a request for %zu bytes\n", capacity);
+                exit(EXIT_FAILURE);
+            }
+            list = bigger;
+        }
+        if (used > 0) {
+            list[used++] = ',';
+        }
+        strcpy(list + used, name);
+        used += strlen(name);
+    }
+    free(line);
+    fclose(fh);
+    if (used == 0) {
+        fprintf(stderr, "ERROR, %s does not contain any sequence names\n", filename);
+        exit(EXIT_FAILURE);
+    }
+    return list;
 }
 unsigned countNames(char *s) {
     unsigned i, n;
