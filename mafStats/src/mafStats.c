@@ -309,6 +309,9 @@ void reportStats(stats_t *stats) {
     printf("\n");
 }
 int main(int argc, char **argv) {
+    // the maf goes to standard output, and a failed write there is
+    // otherwise reported to nobody
+    checkStdoutAtExit();
     char *maf = NULL;
     parseOptions(argc, argv, &maf);
     mafFileApi_t *mfa = maf_newMfa(maf, "r");

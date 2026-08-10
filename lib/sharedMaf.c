@@ -973,7 +973,7 @@ void maf_writeAll(mafFileApi_t *mfa, mafBlock_t *mb) {
   }
   fprintf(mfa->mfp, "\n");
   ++(mfa->lineNumber);
-  fclose(mfa->mfp);
+  de_fclose(mfa->mfp, mfa->filename);
   mfa->mfp = NULL;
 }
 void maf_writeBlock(mafFileApi_t *mfa, mafBlock_t *mb) {

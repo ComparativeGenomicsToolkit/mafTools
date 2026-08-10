@@ -266,6 +266,9 @@ void searchInput(mafFileApi_t *mfa, char *fullname, unsigned long pos) {
 }
 
 int main(int argc, char **argv) {
+    // the maf goes to standard output, and a failed write there is
+    // otherwise reported to nobody
+    checkStdoutAtExit();
     char filename[kMaxStringLength];
     char targetName[kMaxStringLength];
     uint64_t targetPos;

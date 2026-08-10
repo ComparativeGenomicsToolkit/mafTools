@@ -157,6 +157,9 @@ void parseOptions(int argc, char **argv, char *filename, char *seqName, uint64_t
 }
 
 int main(int argc, char **argv) {
+    // the maf goes to standard output, and a failed write there is
+    // otherwise reported to nobody
+    checkStdoutAtExit();
     extern const int kMaxStringLength;
     char seq[kMaxSeqName];
     char filename[kMaxStringLength];

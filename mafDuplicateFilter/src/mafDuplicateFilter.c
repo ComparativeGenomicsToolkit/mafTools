@@ -680,6 +680,9 @@ void processBody(mafFileApi_t *mfa) {
     }
 }
 int main(int argc, char **argv) {
+    // the maf goes to standard output, and a failed write there is
+    // otherwise reported to nobody
+    checkStdoutAtExit();
     char filename[kMaxStringLength];
     parseOptions(argc, argv, filename);
     mafFileApi_t *mfa = maf_newMfa(filename, "r");

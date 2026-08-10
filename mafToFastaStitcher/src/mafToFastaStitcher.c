@@ -178,6 +178,9 @@ void usage(void) {
   exit(EXIT_FAILURE);
 }
 int main(int argc, char **argv) {
+    // the maf goes to standard output, and a failed write there is
+    // otherwise reported to nobody
+    checkStdoutAtExit();
   options_t *options = options_construct();
   stHash *sequenceHash = NULL; // keyed on fasta headers, valued with mtfseq_t pointers
   stHash *alignmentHash = stHash_construct3(stHash_stringKey, stHash_stringEqualKey, free, destroyRow); // keyed on species names, valued with row_t pointers

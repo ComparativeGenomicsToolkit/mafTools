@@ -38,9 +38,16 @@ void de_debug(char const *fmt, ...);
 void* de_malloc(size_t n);
 int64_t de_getline(char **s, int64_t *n, FILE *f);
 FILE* de_fopen(const char *s, char const *mode);
+// Close a file we have written, checking that everything actually landed.
+// Prefer this to a bare fclose on any output file.
+void de_fclose(FILE *f, const char *filename);
 char* de_strdup(const char *s);
 char* de_strndup(const char *s, size_t n);
 void failBadFormat(void);
+// Arrange for standard output to be checked when the program exits, so that a
+// failed write is reported rather than leaving a truncated maf that still
+// parses. Call once, at the top of main.
+void checkStdoutAtExit(void);
 void usageMessage(char shortopt, const char *name, const char *description);
 char* stringReplace(const char *string, const char a, const char b);
 int minint(int a, int b);

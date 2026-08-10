@@ -382,6 +382,9 @@ void reportResults(char *seq1, char *seq2, stHash *seq1Hash, stHash *seq2Hash,
 
 
 int main(int argc, char **argv) {
+    // the maf goes to standard output, and a failed write there is
+    // otherwise reported to nobody
+    checkStdoutAtExit();
   extern const int kMaxStringLength;
   char seq1[kMaxSeqName];
   char seq2[kMaxSeqName];
