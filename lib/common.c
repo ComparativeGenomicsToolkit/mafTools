@@ -87,6 +87,27 @@ FILE* de_fopen(const char *filename, char const *mode) {
     }
     return f;
 }
+void de_fclose(FILE *f, const char *filename) {
+    // Closing is the last point at which buffered data reaches the operating
+    // system, so a write that fails there is reported nowhere else. The flush
+    // is part of the check rather than an optimisation: the buffer is not
+    // necessarily handed over until it happens, so a stream that has already
+    // lost data can still look clean beforehand.
+    if (f == NULL) {
+        return;
+    }
+    if (fflush(f) != 0 || ferror(f)) {
+        fprintf(stderr, "ERROR, failed to write file %s, so its contents are incomplete. "
+                        "Check the free space, the quota and the permissions on the file "
+                        "system holding it.\n", filename);
+        exit(EXIT_FAILURE);
+    }
+    if (fclose(f) != 0) {
+        fprintf(stderr, "ERROR, failed to close file %s, so its contents may be incomplete.\n",
+                filename);
+        exit(EXIT_FAILURE);
+    }
+}
 char* de_strdup(const char *s) {
     size_t n = strlen(s) + 1;
     char *copy = de_malloc(n);
@@ -141,6 +162,30 @@ void de_debug(char const *fmt, ...) {
 void failBadFormat(void) {
     fprintf(stderr, "The maf sequence lines are incorrectly formatted, exiting\n");
     exit(EXIT_FAILURE);
+}
+static void checkStdoutOnExit(void) {
+    // atexit handlers run before the C library flushes the streams, so the
+    // flush has to happen here for the error indicator to mean anything.
+    // exit() cannot be called from an atexit handler -- that is undefined --
+    // so this uses _Exit, which also skips the second, futile flush.
+    if (fflush(stdout) != 0 || ferror(stdout)) {
+        fprintf(stderr, "Failed to write to standard output, so its contents are "
+                        "incomplete. Check the free space, the quota and the "
+                        "permissions on the file system holding it.\n");
+        _Exit(EXIT_FAILURE);
+    }
+}
+void checkStdoutAtExit(void) {
+    // These tools write their maf to standard output and leave the caller to
+    // redirect it. stdio reports a failed write -- a full disk, a quota, a
+    // read-only mount -- only by setting an error indicator that nothing is
+    // obliged to read, and at normal exit the C library flushes and discards
+    // it, so a truncated maf and a complete one are indistinguishable and the
+    // tool still exits successfully. A short maf is still a valid maf.
+    if (atexit(checkStdoutOnExit) != 0) {
+        fprintf(stderr, "Could not install the standard output check\n");
+        exit(EXIT_FAILURE);
+    }
 }
 int minint(int a, int b) {
     if (a < b) {

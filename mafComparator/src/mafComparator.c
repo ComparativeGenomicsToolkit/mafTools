@@ -476,6 +476,9 @@ int parseOptions(int argc, char **argv, Options* options) {
     return optind;
 }
 int main(int argc, char **argv) {
+    // the maf goes to standard output, and a failed write there is
+    // otherwise reported to nobody
+    checkStdoutAtExit();
     Options *options = options_construct();
     FILE *fileHandle = NULL;
     stHash *intervalsHash = stHash_construct3(stHash_stringKey, stHash_stringEqualKey, free,
@@ -563,7 +566,7 @@ int main(int argc, char **argv) {
                   seqNamesSet, options->bedFiles);
     reportResultsForWiggles(wigglePairHash, fileHandle);
     fprintf(fileHandle, "</alignmentComparisons>\n");
-    fclose(fileHandle);
+    de_fclose(fileHandle, options->outputFile);
     // Clean up.
     stSortedSet_destruct(results_12);
     stSortedSet_destruct(results_21);

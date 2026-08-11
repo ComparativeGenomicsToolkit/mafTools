@@ -210,6 +210,9 @@ void destroyArray(sortingMafBlock_t **array, unsigned numBlocks) {
     }
 }
 int main(int argc, char **argv) {
+    // the maf goes to standard output, and a failed write there is
+    // otherwise reported to nobody
+    checkStdoutAtExit();
     extern const int kMaxStringLength;
     char targetSequence[kMaxSeqName];
     char filename[kMaxStringLength];

@@ -616,7 +616,7 @@ void writeFastaOut(stHash *alignmentHash, stList *rowOrder, options_t *options) 
         }
         fprintf(fa, "\n");
     }
-    fclose(fa);
+    de_fclose(fa, options->outMfa);
 }
 void writeMafOut(stHash *alignmentHash, stList *rowOrder, options_t *options) {
     row_t *r = NULL;
@@ -627,7 +627,7 @@ void writeMafOut(stHash *alignmentHash, stList *rowOrder, options_t *options) {
     fprintf(maf, "##maf version=1\n\n");
     if (stList_length(rowOrder) == 0) {
         // There's nothing to write out.
-        fclose(maf);
+        de_fclose(maf, options->outMaf);
         return;
     }
     for (int64_t i = 0; i < stList_length(rowOrder); ++i) {
@@ -679,5 +679,5 @@ void writeMafOut(stHash *alignmentHash, stList *rowOrder, options_t *options) {
     }
     fprintf(maf, "\n");
     free(fmtLine);
-    fclose(maf);
+    de_fclose(maf, options->outMaf);
 }

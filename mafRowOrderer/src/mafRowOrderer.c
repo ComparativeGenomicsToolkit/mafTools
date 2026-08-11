@@ -253,6 +253,9 @@ void destroyNameList(char **names, unsigned n) {
     free(names);
 }
 int main(int argc, char **argv) {
+    // the maf goes to standard output, and a failed write there is
+    // otherwise reported to nobody
+    checkStdoutAtExit();
     char filename[kMaxStringLength];
     char *orderlist = (char*)malloc(1000000 * sizeof(char));
     orderlist[0] = '\0';

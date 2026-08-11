@@ -918,6 +918,9 @@ void reportTransitiveClosure(stPinchThreadSet *threadSet, stHash *hash, stHash *
     printf("\n");
 } 
 int main(int argc, char **argv) {
+    // the maf goes to standard output, and a failed write there is
+    // otherwise reported to nobody
+    checkStdoutAtExit();
     (void) (printMatrix);
     (void) (printu32Array);
     (void) (reportSequenceHash);

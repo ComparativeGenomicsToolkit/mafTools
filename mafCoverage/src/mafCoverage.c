@@ -118,6 +118,9 @@ static void parseOptions(int argc, char **argv) {
 }
 
 int main(int argc, char **argv) {
+    // the maf goes to standard output, and a failed write there is
+    // otherwise reported to nobody
+    checkStdoutAtExit();
     parseOptions(argc, argv);
     //Work out the structure of the chromosomes of the query sequence
     stHash *sequenceNamesToSequenceSizes = getMapOfSequenceNamesToSizesFromMaf(mafFileName);

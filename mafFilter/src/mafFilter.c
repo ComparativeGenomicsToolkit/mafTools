@@ -420,6 +420,9 @@ void reportNames(char **names, unsigned n) {
     }
 }
 int main(int argc, char **argv) {
+    // the maf goes to standard output, and a failed write there is
+    // otherwise reported to nobody
+    checkStdoutAtExit();
     (void) (reportNames);
     char filename[kMaxStringLength];
     char *nameList = NULL; // heap allocated by parseOptions so the list length is unbounded
